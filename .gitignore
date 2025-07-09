@@ -1,0 +1,12 @@
+# Python virtual environment
+venv/
+
+# FastF1 cache
+f1_cache/
+
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+
+# IDE folders (optional)
+.vscode/
