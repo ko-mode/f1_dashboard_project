@@ -37,3 +37,50 @@ tel = tel.add_distance()
 
 # print(tel[['Distance', 'Speed', 'Throttle', 'Brake']].head())
 
+## Fetch weather, timing (schedule) and event info (results)
+
+# Weather readings as a DataFrame
+weather = session.weather_data
+print(weather.head())
+
+# Event schedule & results
+schedule = fastf1.get_event_schedule(2024)
+results = session.results
+
+## Simple plot with fastf1's helpers
+
+from fastf1 import plotting
+import matplotlib.pyplot as plt
+
+plotting.setup_mpl() # Applies F1-style colors & fonts
+
+fig, ax = plt.subplots()
+ax.plot(tel['Distance'], tel['Speed'], label = 'Speed')
+ax.set_xlabel('Distance (m)')
+ax.set_ylabel('Speed (km/h)')
+# plt.show()
+
+## Putting into a notebook or script, another example
+
+import os, fastf1
+from fastf1 import get_session, plotting
+import matplotlib.pyplot as plt
+
+os.makedirs('f1_cache', exist_ok = True)
+fastf1.Cache.enable_cache('f1_cache')
+plotting.setup_mpl()
+
+# Load data
+session = get_session(2024, 'Silverstone', 'R')
+session.load()
+
+# Prepare laps & telemetry
+laps = session.laps.pick_quicklaps()
+lap = laps.pick_driver('HAM').pick_fastest()
+tel = lap.get_car_data().add_distance()
+
+# Plot
+fig, ax = plt.subplots(figsize = (8,4))
+ax.plot(tel['Distance'], tel['Speed'])
+ax.set(title = "Hamilton's Fastest Race Lap", xlabel = 'Distance (m)', ylabel = 'Speed (km/h)')
+plt.show()
