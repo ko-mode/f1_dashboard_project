@@ -21,6 +21,7 @@ import pandas as pd
 
 columns_to_keep = ['Driver', 'Team', 'Compound', 'LapTime', 'LapNumber', 'TyreLife', 'Sector1Time', 'Sector2Time', 'Sector3Time']
 
+# Dataframe of the quick laps
 df = quick_laps[columns_to_keep].copy()
 
 # Convert time deltas to seconds
@@ -35,9 +36,11 @@ df['Driver'] = df['Driver'].astype('category').cat.codes
 df['Team'] = df['Team'].astype('category').cat.codes
 df['Compound'] = df['Compound'].astype('category').cat.codes
 
+# Get the weather data and copy so we don't have to keep fetching
 weather = session.weather_data.copy()
 weather['Time'] = pd.to_timedelta(weather['Time'])
 
+# Get the quick laps and copy so we don't keep fetching
 laps = session.laps.pick_quicklaps().copy()
 laps['LapStartTime'] = pd.to_timedelta(laps['LapStartTime'])
 
@@ -53,11 +56,14 @@ laps = laps.reset_index(drop=True)
 aligned_weather = aligned_weather[['AirTemp', 'Humidity', 'TrackTemp', 'WindSpeed']].reset_index(drop=True)
 df = pd.concat([df.reset_index(drop=True), aligned_weather], axis=1)
 
+# Import libraries to scale the data and train into a model
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
-import joblib  # to save models and scalers
+# To save models and scalers
+import joblib  
 
+# List out the features to scale
 features_to_scale = ['LapNumber', 'TyreLife', 'Sector1Time', 'Sector2Time',
                      'Sector3Time', 'AirTemp', 'Humidity', 'TrackTemp', 'WindSpeed']
 
@@ -74,11 +80,11 @@ y_lap = df['LapTime']
 
 X_train, X_test, y_train, y_test = train_test_split(X_lap, y_lap, test_size=0.2, random_state=42)
 
-# Train XGBoost Model
+# Train XGBoost Model to predict laptime
 xgb_lap_model = XGBRegressor(
-    n_estimators=200,      # more trees = better performance up to a point
+    n_estimators=200,      # more trees, more accurate = better performance up to a point
     max_depth=6,           # controls overfitting
-    learning_rate=0.05,    # smaller = more accurate, slower
+    learning_rate=0.05,    # smaller = more accurate though slower
     subsample=0.8,         # prevents overfitting
     colsample_bytree=0.8,  # use 80% features per tree
     random_state=42,
@@ -97,12 +103,12 @@ position_data['DriverNumber'] = position_data['DriverNumber'].astype(int)
 df['DriverNumber'] = laps['DriverNumber'].astype(int).values
 df_pos = df.merge(position_data, on='DriverNumber')
 
-# Train
 X_pos = df_pos.drop(columns=['Position', 'LapTime'])
 y_pos = df_pos['Position']
 
 X_train_p, X_test_p, y_train_p, y_test_p = train_test_split(X_pos, y_pos, test_size=0.2, random_state=42)
 
+# Train the model on predicting finishing position
 xgb_pos_model = XGBRegressor(
     n_estimators=100,
     max_depth=4,
@@ -125,14 +131,15 @@ with open("xgb_lap_params.json", "w") as f:
 with open("xgb_pos_params.json", "w") as f:
     json.dump(xgb_pos_model.get_params(), f)
 
+# import streamlit to make dashboard, matplotlib to plot data
+# and import sklearn to calculate error 
 import streamlit as st
-import joblib
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
 
 st.set_page_config(layout="wide")
-st.title("🏎️ F1 Lap Time Prediction Dashboard")
+st.title("F1 Lap Time Prediction Dashboard")
 
 # Load saved model and scaler
 @st.cache_resource
